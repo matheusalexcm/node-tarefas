@@ -1,0 +1,269 @@
+<!DOCTYPE html>
+<html lang="en">
+	<head>
+		<meta charset="UTF-8" />
+		<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+		<link
+			rel="stylesheet"
+			href="https://stackpath.bootstrapcdn.com/bootstrap/4.4.1/css/bootstrap.min.css"
+		/>
+		<link
+			rel="stylesheet"
+			href="https://stackpath.bootstrapcdn.com/font-awesome/4.7.0/css/font-awesome.min.css"
+		/>
+		<script src="https://unpkg.com/axios/dist/axios.min.js"></script>
+		<title>My App Tarefas</title>
+	</head>
+
+	<body>
+		<div class="container">
+			<h1>Cadastro de Tarefas</h1>
+			<form>
+				<div class="form-group">
+					<label for="nome">Nome</label>
+					<input type="text" class="form-control" id="nome" />
+				</div>
+
+				<div class="form-group">
+					<label for="descricao">Descrição</label>
+					<input type="text" class="form-control" id="descricao" />
+				</div>
+
+				<div class="form-row">
+					<div class="form-group col-md-4">
+						<label for="dataInicio">Data Inicial</label>
+						<input type="date" class="form-control" id="dataInicio" />
+					</div>
+					<div class="form-group col-md-4">
+						<label for="dataFim">Data Final</label>
+						<input type="date" class="form-control" id="dataFim" />
+					</div>
+					<div class="form-group col-md-4">
+						<label for="prioridade">Prioridade</label>
+						<select id="prioridade" class="form-control">
+							<option selected value="Normal">Normal</option>
+							<option value="Urgente">Urgente</option>
+						</select>
+					</div>
+				</div>
+
+				<button class="btn btn-primary is-create" id="botao" data-id="">
+					Salvar
+					<i class="fa fa-check" aria-hidden="true"></i>
+				</button>
+			</form>
+
+			<hr />
+			<h1 style="margin-top: 40px;">Lista de Terafas</h1>
+
+			<div class="row">
+				<table class="table">
+					<thead>
+						<tr>
+							<th scope="col">Nome</th>
+							<th scope="col">Descrição</th>
+							<th scope="col">Data Inicio</th>
+							<th scope="col">Data Fim</th>
+							<th scope="col">Prioridade</th>
+							<th scope="col">Deletar</th>
+							<th scope="col">Alterar</th>
+						</tr>
+					</thead>
+					<tbody id="lista"></tbody>
+				</table>
+			</div>
+		</div>
+
+		<script>
+			window.onload = () => {
+				const lista = document.querySelector('#lista');
+				const botao = document.querySelector('#botao');
+
+				const nome = document.querySelector('#nome');
+				const descricao = document.querySelector('#descricao');
+				const dataInicio = document.querySelector('#dataInicio');
+				const dataFim = document.querySelector('#dataFim');
+				const prioridade = document.querySelector('#prioridade');
+
+				botao.addEventListener('click', create);
+				botao.addEventListener('click', update);
+
+				lista.addEventListener('click', del);
+				lista.addEventListener('click', edit);
+
+				read();
+			};
+
+			function templateLi(
+				id,
+				name,
+				description,
+				start_date,
+				end_date,
+				priority,
+				element = true
+			) {
+				return `
+					${element ? `<tr>` : ''}
+						<td>${name}</td>
+						<td>${description}</td>
+						<td>${start_date}</td>
+						<td>${end_date}</td>
+						<td>${priority}</td>
+							<td>
+								<i class="btn btn-danger delete fa fa-trash"
+								data-id="${id}"
+								></i>
+							</td>
+							<td>
+								<i class="btn btn-primary update fa fa-wrench"
+								data-id="${id}"
+								></i>
+							</td>
+					${element ? `</tr>` : ''}
+				`;
+			}
+
+			function read() {
+				lista.innerHTML = '';
+
+				axios
+					.get('/read')
+					.then((response) => {
+						response.data.forEach((element) => {
+							lista.innerHTML += templateLi(
+								element.id,
+								element.name,
+								element.description,
+								element.start_date,
+								element.end_date,
+								element.priority
+							);
+						});
+					})
+					.catch((error) => {
+						console.log(error);
+					});
+			}
+
+			function create() {
+				if (!botao.classList.contains('is-create')) return;
+
+				const name = nome.value;
+				const description = descricao.value;
+				const start_date = dataInicio.value;
+				const end_date = dataFim.value;
+				const priority = prioridade.value;
+
+				axios
+					.post('/create', {
+						name,
+						description,
+						start_date,
+						end_date,
+						priority,
+					})
+					.then((response) => {
+						console.log(response);
+						lista.innerHTML += templateLi(
+							response.data[0],
+							name,
+							description,
+							start_date,
+							end_date,
+							priority
+						);
+					})
+					.catch((error) => {
+						console.log(error);
+					});
+			}
+
+			function edit(element) {
+				if (element.target.classList.contains('update')) {
+					const input = document.createElement('input');
+
+					const pai = element.target.parentElement;
+					const id = element.target.dataset.id;
+
+					axios
+						.get(`/show/${id}`)
+						.then((response) => {
+							console.log(response);
+
+							nome.value = response.data.name;
+							descricao.value = response.data.description;
+							dataInicio.value = response.data.start_date;
+							dataFim.value = response.data.end_date;
+							prioridade.value = response.data.priority;
+
+							botao.classList.remove('is-create');
+							botao.classList.add('is-update');
+							botao.dataset.id = id;
+						})
+						.catch((error) => {
+							console.log(error);
+						});
+				}
+			}
+
+			function update() {
+				if (!botao.classList.contains('is-update')) return;
+
+				const id = botao.dataset.id;
+				console.log(id);
+				const name = nome.value;
+				const description = descricao.value;
+				const start_date = dataInicio.value;
+				const end_date = dataFim.value;
+				const priority = prioridade.value;
+
+				axios
+					.put(`/update/${id}`, {
+						name,
+						description,
+						start_date,
+						end_date,
+						priority,
+					})
+					.then((response) => {
+						if ((response.status = 200)) {
+							read();
+							clear();
+						}
+					})
+					.catch((error) => {
+						console.log(error);
+					});
+			}
+
+			function del(element) {
+				console.log(element);
+				if (element.target.classList.contains('delete')) {
+					const id = element.target.dataset.id;
+
+					axios
+						.delete(`/delete/${id}`)
+						.then((response) => {
+							console.log(response);
+							if ((response.status = 200)) {
+								lista.removeChild(element.path[4]);
+							}
+						})
+						.catch((error) => {
+							console.log(error);
+						});
+				}
+			}
+
+			function clear() {
+				const input = document.getElementsByTagName('input');
+				console.log(input.length);
+				for (let i = 0; i < input.length; i++) {
+					console.log(input[i].id);
+					input[i].value = '';
+				}
+			}
+		</script>
+	</body>
+</html>
